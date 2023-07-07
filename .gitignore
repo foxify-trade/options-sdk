@@ -41,4 +41,4 @@ lerna-debug.log*
 /script-helpers/direct-connector-to-obj/data.txt
 /script-helpers/direct-connector-to-obj/result.json
 
-./src/api/generated
+/src/api/generated
