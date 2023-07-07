@@ -2,7 +2,7 @@
   "name": "options-sdk",
   "version": "1.0.0",
   "scripts": {
-    "generate-api": "openapi --input ./api/openapi.json --output ./api/generated",
+    "generate-api": "openapi --input ./src/api/openapi.json --output ./src/api/generated",
     "test": "jest"
   },
   "main": "index.js",
