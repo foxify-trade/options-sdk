@@ -29,25 +29,23 @@ export function Web3Contract<T extends Omit<BaseContract, 'constructor'>>(opts: 
   return Web3Contract as unknown as ContractCtor<T>;
 }
 
-// export type EventFactory<
-//   TName extends string,
-//   TMap extends Record<TName, any>,
-//   TEvent extends TName | void = void,
-// > = TEvent extends TName ? TMap[TEvent] : TMap[TName];
+export type EventFactory<
+  TName extends string,
+  TMap extends Record<TName, any>,
+  TEvent extends TName | void = void,
+> = TEvent extends TName ? TMap[TEvent] : TMap[TName];
 
-// export type ObtainLog<T> = T extends ContractEventLog<infer U> ? U : never;
+export function EventAbiFactory<T extends string>(fullAbi: AbiItem[], nameMap: Record<string, T>, type: AbiItem['type'] = 'event') {
 
-// export function EventAbiFactory<T extends string>(fullAbi: AbiItem[], nameMap: Record<string, T>, type: AbiItem['type'] = 'event') {
-
-//   const names = Object.values<string>(nameMap);
-//   const result = names.reduce((acc, name) => {
-//     const abi = fullAbi.find((abi) => abi.type === type && abi.name === name);
-//     if (!abi) {
-//       throw new Error(`${EventAbiFactory.name}: Abi not found for ${type} ${name}`);
-//     }
-//     acc[name] = abi;
-//     return acc;
-//   }, {} as Record<T, AbiItem>);
-//   return result;
-// }
+  const names = Object.values<string>(nameMap);
+  const result = names.reduce((acc, name) => {
+    const abi = fullAbi.find((abi) => abi.type === type && abi.name === name);
+    if (!abi) {
+      throw new Error(`${EventAbiFactory.name}: Abi not found for ${type} ${name}`);
+    }
+    acc[name as T] = abi;
+    return acc;
+  }, {} as Record<T, AbiItem>);
+  return result;
+}
 

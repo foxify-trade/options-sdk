@@ -17,8 +17,9 @@ export class OptionsApi {
     this.ordersApi = new OrdersApi(apiConfig);
   }
 
-  getOracles() {
-    return this.oraclesApi.oracleControllerGetOracles();
+  async getOracles() {
+    const response = await this.oraclesApi.oracleControllerGetOracles();
+    return response.data;
   }
 
   async getOrders() {

@@ -27,18 +27,22 @@ const sdk = new OptionsSdk({
 const minStableAmount = 10;
 async function main() {
 
-  const [order] = await sdk.api.getOrders();
-  console.log('order', order);
+  const [oracle] = await sdk.api.getOracles();
 
-  console.log('params', sdk.contracts.sender, [{
-    orderId: order.id,
-    amount: order.amount,
-  }])
-  const result = await sdk.contracts.acceptOrders(sdk.contracts.sender, [{
-    orderId: order.orderId,
-    amount: minStableAmount + 1,
-  }]);
-  console.log("🚀 ~ file: 1_order.ts:22 ~ main ~ result:", result)
+  const { orderId } = await sdk.contracts.createOrder({
+    direction: sdk.contracts.Direction.Up,
+    duration: '15m',
+    oracle: oracle.address,
+    percent: 5,
+    rate: 1e16.toString(),
+    reinvest: false,
+    amount: 100,
+  });
+
+  await sdk.contracts.increaseOrder(orderId, 10);
+  await sdk.contracts.withdrawOrder(orderId, 10);
+  await sdk.contracts.closeOrder(orderId);
+
 }
 
 main();

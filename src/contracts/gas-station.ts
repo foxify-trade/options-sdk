@@ -37,20 +37,29 @@ interface TxConfWrap {
 interface IOpts {
   web3: Web3;
   logger: ILogger;
+  gasRiskFactor?: IGasRiskFactor;
 }
+
+interface IGasRiskFactor {
+  gasPrice: bigint;
+  gasLimit: bigint;
+}
+
+const DefaultGasRiskFactor: IGasRiskFactor = {
+  gasPrice: 10n,
+  gasLimit: 40n,
+};
 export class GasStation {
   private web3: Web3;
   private logger: ILogger;
+  factor: IGasRiskFactor;
 
   // 0 means not change, 10 means that original value would be increased by oValue * 1.1
-  factor = {
-    gasPrice: 10n,
-    gasLimit: 40n,
-  };
 
   constructor(params: IOpts) {
     this.web3 = params.web3;
     this.logger = params.logger;
+    this.factor = params.gasRiskFactor ?? DefaultGasRiskFactor;
   }
 
   async rawEstimate(...params: Params) {
