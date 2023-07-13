@@ -28,17 +28,11 @@ const minStableAmount = 10;
 async function main() {
 
   const [order] = await sdk.api.getOrders();
-  console.log('order', order);
 
-  console.log('params', sdk.contracts.sender, [{
-    orderId: order.id,
-    amount: order.amount,
-  }])
   const result = await sdk.contracts.acceptOrders(sdk.contracts.sender, [{
     orderId: order.orderId,
     amount: minStableAmount + 1,
   }]);
-  console.log("🚀 ~ file: 1_order.ts:22 ~ main ~ result:", result)
 }
 
 main();
