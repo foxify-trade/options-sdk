@@ -1,5 +1,5 @@
 
-import { OptionsApi } from '../../src/api/api';
+import { OptionsApi } from '../../src/api';
 
 const url = 'https://api-options.prd.foxify.trade';
 describe('API SDK tests', () => {

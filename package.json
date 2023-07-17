@@ -1,11 +1,11 @@
 {
-  "name": "options-sdk",
+  "name": "@foxify.trade/options-sdk",
   "version": "1.0.0",
   "scripts": {
+    "build": "./node_modules/typescript/bin/tsc",
     "generate-api": "openapi-generator-cli generate -i ./src/api/openapi.json -o ./src/api/generated -g typescript-axios",
     "test": "jest"
   },
-  "main": "index.js",
   "license": "MIT",
   "devDependencies": {
     "@openapitools/openapi-generator-cli": "^2.6.0",
@@ -19,5 +19,20 @@
   },
   "dependencies": {
     "web3": "^1.10.0"
-  }
+  },
+  "description": "## Content * [Options documentation](https://docs.foxify.trade/foxify-options) * [SDK documentation](https://github.com/foxify-trade/options-sdk/wiki) * [Installation](https://github.com/foxify-trade/options-sdk/wiki/Installation) * [Requirements](https://github.com/foxify-trade/options-sdk/wiki/Requirements) * [Configuration](https://github.com/foxify-trade/options-sdk/wiki/Configuration) * [Quickstart](https://github.com/foxify-trade/options-sdk/wiki/Quick-start-(typescript))",
+  "files": [
+    "dist"
+  ],
+  "main": "dist/index.js",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com-ga:foxify-trade/options-sdk.git"
+  },
+  "keywords": [
+    "foxify",
+    "options",
+    "sdk"
+  ],
+  "author": ""
 }
