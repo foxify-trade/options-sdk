@@ -37,8 +37,8 @@ interface ICreateOrder {
    */
   rate: number | string;
   /**
-   * Number multiplied by stable decimals (8 for default)
-   * @example 1=1e8 10=10 * 1e8=1e9
+   * Number multiplied by stable decimals (6 for default)
+   * @example 1=1e6 10=10 * 1e6=1e9
    */
   amount: number | string;
 }
@@ -97,7 +97,7 @@ export class OptionContracts {
     assert(AllowedDurationValues.includes(data.duration), `Invalid duration. Valid values: ${AllowedDurationValues.join(',')}`);
     assert(AllowedPercentValues.includes(data.percent), `Invalid percent. Valid values: ${AllowedPercentValues.join(',')}`);
     await this.#approve(data.amount);
-    const percent = (100n + BigInt(data.percent)) * BigInt(1e16);
+    const percent = (10000n + BigInt(Math.floor(data.percent * 100))) * BigInt(1e14);
     const description: Core.Web3.ICore.OrderDescriptionStruct = {
       oracle: data.oracle,
       direction: data.direction,
