@@ -24,12 +24,12 @@ const sdk = new OptionsSdk({
   }
 })
 
-const minStableAmount = 10;
+const minStableAmount = 1;
 async function main() {
 
   const [order] = await sdk.api.getOrders();
 
-  const result = await sdk.contracts.acceptOrders(sdk.contracts.sender, [{
+  const result = await sdk.contracts.acceptOrders([{
     orderId: order.orderId,
     amount: minStableAmount + 1,
   }]);

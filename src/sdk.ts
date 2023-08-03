@@ -1,5 +1,5 @@
-import { OptionsApi, OptionsApiCtorParams } from './api';
-import { OptionContracts, OptionsContractsCtorParams } from './contracts';
+import { OptionsApi, OptionsApiCtorParams } from './api/api.module';
+import { OptionContracts, OptionsContractsCtorParams } from './contracts/contracts.module';
 
 export interface OptionsSdkParams {
   api: OptionsApiCtorParams;
@@ -12,7 +12,10 @@ export class OptionsSdk {
 
   constructor(params: OptionsSdkParams) {
     this.api = new OptionsApi(params.api);
-    this.contracts = new OptionContracts(params.contracts);
+    this.contracts = new OptionContracts({
+      ...params.contracts,
+      rawApi: params.contracts.rawApi ?? this.api.raw,
+    });
   }
 
 }
