@@ -1,6 +1,6 @@
 # Changelog
 
-# Release
+## Released
 ### 1.1.0
 #### Contract module
 * Refactor number parameters (allow float number instead of using exponential number)
