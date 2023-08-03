@@ -1,5 +1,5 @@
-import { OptionsApi, OptionsApiCtorParams } from './api';
-import { OptionContracts, OptionsContractsCtorParams } from './contracts';
+import { OptionsApi, OptionsApiCtorParams } from './api/api.module';
+import { OptionContracts, OptionsContractsCtorParams } from './contracts/contracts.module';
 
 export interface OptionsSdkParams {
   api: OptionsApiCtorParams;
