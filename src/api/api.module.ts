@@ -15,6 +15,18 @@ export interface IRawApi {
   wallet: WalletApi;
 }
 
+interface IGetOrders {
+  oracleIds?: Array<number>
+  sortingBy?: 'rate' | 'reserved' | 'available' | 'duration' | 'percent' | 'amount';
+  sortingDestination?: 'ASC' | 'DESC', closed?: boolean;
+  account?: string;
+  orderType?: 'my_order' | 'all_order';
+  duration?: string;
+  percent?: string;
+  skip?: number;
+  limit?: number;
+}
+
 export class OptionsApi {
   raw: IRawApi;
 
@@ -34,15 +46,31 @@ export class OptionsApi {
   }
 
 
-
   async getOracles() {
     const response = await this.raw.oracles.oracleControllerGetOracles();
     return response.data;
   }
 
-  async getOrders() {
-    const response = await this.raw.orders.orderControllerGetOrders();
+  async getOrders(oParams?: IGetOrders) {
+    const paramsObj: IGetOrders = {
+      oracleIds: undefined,
+      sortingBy: undefined,
+      sortingDestination: undefined,
+      account: undefined,
+      orderType: undefined,
+      duration: undefined,
+      percent: undefined,
+      skip: undefined,
+      limit: undefined,
+      ...oParams,
+    };
+    const params = Object.values(paramsObj) as Parameters<OrdersApi['orderControllerGetOrders']>;
+    const response = await this.raw.orders.orderControllerGetOrders(...params);
     return response.data;
   }
 
+  async getOrder(orderId: number) {
+    const response = await this.raw.orders.orderControllerGetOrder(orderId);
+    return response.data;
+  }
 }

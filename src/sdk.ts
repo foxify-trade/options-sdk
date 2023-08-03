@@ -12,7 +12,10 @@ export class OptionsSdk {
 
   constructor(params: OptionsSdkParams) {
     this.api = new OptionsApi(params.api);
-    this.contracts = new OptionContracts(params.contracts);
+    this.contracts = new OptionContracts({
+      ...params.contracts,
+      rawApi: params.contracts.rawApi ?? this.api.raw,
+    });
   }
 
 }
