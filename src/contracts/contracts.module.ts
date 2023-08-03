@@ -149,7 +149,7 @@ export class OptionContracts {
     const method = this.core.methods.withdrawOrder(orderId, actualAmount);
     const tx = await this.gasStation.estimateAndSend(method);
     const txHash = tx.transactionHash;
-    this.#notify((api) => api.orders.orderControllerIncreaseOrder({ txHash }));
+    this.#notify((api) => api.orders.orderControllerWithdrawOrder({ txHash }));
     this.logger.log('Order wihtdrawed', { txHash });
   }
 
@@ -226,6 +226,7 @@ export class OptionContracts {
     if (!this.rawApi) {
       this.logger.debug('Notifications are disabled (bc rawApi is not set)')
     } else {
+      this.logger.debug('Notifaction sent');
       fn(this.rawApi)
         .catch((error) => {
           this.logger.warn('Failed to notify, wait for backend to index your action', error);
