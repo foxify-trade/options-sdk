@@ -9,6 +9,7 @@ import { obtainLog } from './log.utils';
 import { Src, applyDecimals } from '../utils/decimals.utils';
 import Big from 'big.js';
 import type { IRawApi } from '../api';
+import { PythCryptoOracle } from './PythCryptoOracle';
 
 type OrderId = number;
 enum Direction {
@@ -176,6 +177,12 @@ export class OptionContracts {
     const txHash = tx.transactionHash;
     this.#notify((api) => api.positions.positionControllerCreatePositionByHash({ txHash }));
     this.logger.log('Order accepted', { txHash });
+  }
+
+  async getOraclePythId(oracleAddress: string) {
+    const contract = new PythCryptoOracle.Contract(this.web3, oracleAddress);
+    const pythId = await contract.methods.priceId().call();
+    return pythId
   }
 
   async #approve(amount: string | number) {
