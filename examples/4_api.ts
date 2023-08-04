@@ -29,15 +29,13 @@ const sdk = new OptionsSdk({
 
 async function main() {
 
-  const [oracle] = await sdk.api.getOracles();
-
-  console.log(`Oracle pyth id for ${oracle.name} (address=${oracle.address})`)
-  const latest = await sdk.priceFeed.getLatestPrice(oracle.address);
-  console.log('Latest Price Feeds', latest);
-  sdk.priceFeed.subscribePriceUpdates(oracle.address, (price) => {
-    console.log(`[${new Date().toISOString()}] New price feed received`, price);
-  })
-
+  // get orders that u have created
+  const myOrders = await sdk.api.getOrders({
+    account: sdk.contracts.sender,
+    orderType: 'my_order',
+    skip: 0,
+    limit: 10,
+  });
 }
 
 main();

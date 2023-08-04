@@ -1,5 +1,6 @@
 import * as Pyth from '@pythnetwork/pyth-evm-js';
 import { OptionContracts } from '../contracts';
+import { applyDecimals } from '../utils/decimals.utils';
 
 export interface OptionsPriceFeedParams {
   url: string;
@@ -15,19 +16,26 @@ export class OptionsPriceFeed {
     this.contracts = params.contracts;
   }
 
-  async fullfilOracleWithPythId<T extends { address: string }>(oracle: T): Promise<T & { pythId: string; }> {
-    const pythId = await this.getOraclePythId(oracle.address);
-    return { ...oracle, pythId };
-  }
-
-  async getPriceByOracleAddress(oracleAddress: string) {
+  async subscribePriceUpdates(oracleAddress: string, cb: (price: number) => unknown) {
     const pythId = await this.getOraclePythId(oracleAddress);
-    this.getPrice(pythId);
+    this.pyth.subscribePriceFeedUpdates([pythId], (priceFeed) => {
+      const price = this.#formatPrice(priceFeed);
+      cb(price)
+    });
   }
 
+  async getLatestPrice(oracleAddress: string) {
+    const pythId = await this.getOraclePythId(oracleAddress);
+    const result = await this.pyth.getLatestPriceFeeds([pythId]);
+    if (result) {
+      return this.#formatPrice(result[0]);
+    }
+  }
 
-  getPrice(oraclePythId: string) {
-    this.pyth.getLatestPriceFeeds([oraclePythId]);
+  #formatPrice(priceFeed: Pyth.PriceFeed) {
+    const { price, expo } = priceFeed.getPriceUnchecked();
+    const formattedPrice = applyDecimals(price, expo).toString();
+    return Number(formattedPrice);
   }
 
   #cache = new Map<string, string>();
