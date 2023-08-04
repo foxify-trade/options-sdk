@@ -1,6 +1,7 @@
 import { OptionsApi, OptionsApiCtorParams } from './api/api.module';
 import { OptionContracts, OptionsContractsCtorParams } from './contracts/contracts.module';
 import { OptionsPriceFeed, OptionsPriceFeedParams } from './price-feed';
+import * as decimalsUtils from './utils/decimals.utils';
 
 export interface OptionsSdkParams {
   api: OptionsApiCtorParams;
@@ -8,10 +9,15 @@ export interface OptionsSdkParams {
   priceFeed: OptionsPriceFeedParams;
 }
 
+const Utils = {
+  ...decimalsUtils,
+}
+
 export class OptionsSdk {
   api: OptionsApi;
   contracts: OptionContracts;
   priceFeed: OptionsPriceFeed;
+  utils = Utils;
 
   constructor(params: OptionsSdkParams) {
     this.api = new OptionsApi(params.api);
@@ -24,5 +30,7 @@ export class OptionsSdk {
       ...params.priceFeed,
     })
   }
+
+  static Utils = Utils;
 
 }
