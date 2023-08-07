@@ -243,7 +243,7 @@ export class OptionContracts {
   async #approve(amount: string | number) {
     const allowance = await this.stable.methods.allowance(this.sender, this.core.options.address).call().then((v) => Big(v));
     if (allowance.lt(amount)) {
-      this.logger.debug('Too low allowance, reapproving..', { current: allowance, needed: amount });
+      this.logger.debug('Too low allowance, reapproving..', { current: allowance.toString(), needed: amount });
       const method = this.stable.methods.approve(this.core.options.address, amount.toString());
       const tx = await this.gasStation.estimateAndSend(method);
       this.logger.debug('Approved', { tx: tx.transactionHash });
