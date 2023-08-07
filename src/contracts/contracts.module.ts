@@ -6,7 +6,7 @@ import { Erc20 } from './Erc20';
 import { ILogger } from '../logger';
 import { GasStation } from './gas-station';
 import { obtainLog } from './log.utils';
-import { Src, applyDecimals } from '../utils/decimals.utils';
+import { Src, applyDecimals, removeDecimals } from '../utils/decimals.utils';
 import Big from 'big.js';
 import type { IRawApi } from '../api';
 import { PythCryptoOracle } from './PythCryptoOracle';
@@ -28,6 +28,23 @@ const DurationMap: Record<AllowedDurationValue, number> = {
   '4h': 4 * 60 * 60,
   '8h': 8 * 60 * 60,
   '24h': 24 * 60 * 60
+}
+
+const PRECISION = Big(1e18);
+
+interface ILimitsConfiguration {
+  minStableAmount: string;
+  minOrderRate: string;
+  maxOrderRate: string;
+  minDuration: string;
+  maxDuration: string;
+}
+
+interface IFeeConfiguration {
+  feeRecipient: string;
+  autoResolveFee: string;
+  protocolFee: string;
+  flashloanFee: string;
 }
 
 interface ICreateOrder {
@@ -54,6 +71,7 @@ export interface OptionsContractsCtorParams {
   address: {
     core: string;
     stable: string;
+    coreConfiguration: string;
   };
   gasRiskFactor: {
     price: BigInt,
@@ -74,6 +92,7 @@ export class OptionContracts {
   gasStation: GasStation;
 
   core: Core.Contract;
+  coreConfiguration: CoreConfiguration.Contract;
   stable: Erc20.Contract;
 
   Direction = Direction;
@@ -91,6 +110,7 @@ export class OptionContracts {
     const contractOptions = { from: this.sender };
     this.core = new Core.Contract(this.web3, params.address.core, contractOptions);
     this.stable = new Erc20.Contract(this.web3, params.address.stable, contractOptions);
+    this.coreConfiguration = new CoreConfiguration.Contract(this.web3, params.address.coreConfiguration, contractOptions);
   }
 
   #stableDecimals?: Promise<number>;
@@ -107,13 +127,38 @@ export class OptionContracts {
     return this.#stableDecimals;
   }
 
+  #feeConfiguration?: Promise<IFeeConfiguration>;
+  get feeConfiguration() {
+    if (this.#feeConfiguration) {
+      return this.#feeConfiguration;
+    }
+    this.#feeConfiguration = this.coreConfiguration.methods.feeConfiguration().call()
+      .catch((e) => {
+        this.#feeConfiguration = undefined;
+        throw e;
+      })
+    return this.#feeConfiguration;
+  }
+
+  #limitsConfiguration?: Promise<ILimitsConfiguration>;
+  get limitsConfiguration() {
+    if (this.#limitsConfiguration) {
+      return this.#limitsConfiguration;
+    }
+    this.#limitsConfiguration = this.coreConfiguration.methods.limitsConfiguration().call()
+      .catch((e) => {
+        this.#limitsConfiguration = undefined;
+        throw e;
+      })
+    return this.#limitsConfiguration;
+  }
+
   async createOrder(
     data: ICreateOrder
   ) {
     const percent = this.#parsePercent(data.percent);
     const duration = this.#parseDuration(data.duration);
-    assert(data.rate > 0 && data.rate <= 100, 'Invalid rate: should be >= 0 and <= 100');
-    const rate = this.#parseFloat(data.rate, 16);
+    const rate = await this.#parseRate(data.rate);
     const amount = await this.#parseStableAmount(data.amount);
     await this.#approve(amount);
     const description: Core.Web3.ICore.OrderDescriptionStruct = {
@@ -124,7 +169,8 @@ export class OptionContracts {
       duration,
       percent,
     };
-    const method = this.core.methods.createOrder(this.sender, description, data.amount);
+    this.logger.debug('Order data', { description, amount })
+    const method = this.core.methods.createOrder(this.sender, description, amount);
     const tx = await this.gasStation.estimateAndSend(method);
     this.logger.debug('Tx sent', { tx: tx.transactionHash });
     const event = tx.events!.OrderCreated as Core.Web3.OrderCreated;
@@ -154,8 +200,10 @@ export class OptionContracts {
     this.logger.log('Order wihtdrawed', { txHash });
   }
 
-  async closeOrder(...params: Parameters<Core.Contract['methods']['closeOrder']>) {
-    const method = this.core.methods.closeOrder(...params);
+  async closeOrder(orderId: OrderId) {
+    const order = await this.core.methods.orders(orderId).call();
+    assert(order.closed === false, 'Order is already cancelled');
+    const method = this.core.methods.closeOrder(orderId);
     const tx = await this.gasStation.estimateAndSend(method);
     const txHash = tx.transactionHash;
     this.#notify((api) => api.orders.orderControllerCloseOrder({ txHash }));
@@ -218,11 +266,21 @@ export class OptionContracts {
     return DurationMap[value];
   }
 
+  async #parseRate(oValue: number) {
+    const RateDecimals = 18;
+    const value = applyDecimals(Big(oValue).sub(1), RateDecimals);
+    const { minOrderRate, maxOrderRate } = await this.limitsConfiguration;
+    const formatedMin = removeDecimals(minOrderRate, RateDecimals);
+    const formatedMax = removeDecimals(maxOrderRate, RateDecimals);
+    assert(value.gte(minOrderRate) && value.lte(maxOrderRate), `Invalid rate: rate (${oValue}) should be >= ${formatedMin} and <= ${formatedMax}`);
+    return value.toString();
+  }
+
   #parseFloat(value: number, decimals: number) {
     const result = applyDecimals(value, decimals);
     const fract = result.round(Big.roundDown).minus(result);
     assert(fract.lte(0), `Invlalid float, too many numbers in fractional part (value=${value} maxFractionalNumbersCount=${decimals}`)
-    return applyDecimals(value, decimals).toString()
+    return result.toString()
   }
 
   async #parseStableAmount(value: number) {
@@ -239,5 +297,23 @@ export class OptionContracts {
           this.logger.warn('Failed to notify, wait for backend to index your action', error);
         })
     }
+  }
+
+  async getMinOrderAmount(rate: number | string) {
+    const fees = await this.coreConfiguration.methods.feeConfiguration().call();
+    const limits = await this.coreConfiguration.methods.limitsConfiguration().call();
+    const currentRate = Big(rate);
+    const minKeeperFee = Big(limits[0]);
+    const protocolFee = Big(fees[0]);
+    const divider = Big(PRECISION);
+    let denominatorMinuend = divider.times(divider);
+    let numerator = minKeeperFee.times(denominatorMinuend);
+    let denominatorSubtrahend = protocolFee.times(currentRate.plus(1));
+    if (currentRate.lt(divider)) {
+      numerator = numerator.times(divider);
+      denominatorMinuend = denominatorMinuend.times(rate);
+      denominatorSubtrahend = denominatorSubtrahend.times(divider);
+    }
+    return numerator.div(denominatorMinuend.minus(denominatorSubtrahend)).plus(1);
   }
 }
