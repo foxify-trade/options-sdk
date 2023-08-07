@@ -33,11 +33,12 @@ const DurationMap: Record<AllowedDurationValue, number> = {
 const PRECISION = Big(1e18);
 
 interface ILimitsConfiguration {
-  minStableAmount: string;
+  minKeeperFee: string;
   minOrderRate: string;
   maxOrderRate: string;
   minDuration: string;
   maxDuration: string;
+  maxAutoResolveDuration: string;
 }
 
 interface IFeeConfiguration {
@@ -160,6 +161,7 @@ export class OptionContracts {
     const duration = this.#parseDuration(data.duration);
     const rate = await this.#parseRate(data.rate);
     const amount = await this.#parseStableAmount(data.amount);
+    await this.#validateOrderAmount(Big(amount), Big(rate));
     await this.#approve(amount);
     const description: Core.Web3.ICore.OrderDescriptionStruct = {
       oracle: data.oracle,
@@ -233,6 +235,11 @@ export class OptionContracts {
     return pythId
   }
 
+  async approve(amount: number) {
+    const value = await this.#parseStableAmount(amount);
+    await this.#approve(value);
+  }
+
   async #approve(amount: string | number) {
     const allowance = await this.stable.methods.allowance(this.sender, this.core.options.address).call().then((v) => Big(v));
     if (allowance.lt(amount)) {
@@ -276,6 +283,14 @@ export class OptionContracts {
     return value.toString();
   }
 
+  async #validateOrderAmount(amount: Big, rate: Big) {
+    const minAmount = await this.getMinOrderAmount(rate);
+    const stableDecimals = await this.stableDecimals;
+    const fAmount = removeDecimals(amount, stableDecimals);
+    const fMinAmount = removeDecimals(minAmount, stableDecimals);
+    assert(amount.gte(minAmount), `Invalid order amount: amount (${fAmount}) should be greater than minAmount (${fMinAmount}) (minAmount depends on rate)`);
+  }
+
   #parseFloat(value: number, decimals: number) {
     const result = applyDecimals(value, decimals);
     const fract = result.round(Big.roundDown).minus(result);
@@ -299,16 +314,16 @@ export class OptionContracts {
     }
   }
 
-  async getMinOrderAmount(rate: number | string) {
-    const fees = await this.coreConfiguration.methods.feeConfiguration().call();
-    const limits = await this.coreConfiguration.methods.limitsConfiguration().call();
+  async getMinOrderAmount(rate: Big | number | string) {
+    const [{ protocolFee }, { minKeeperFee }] = await Promise.all([
+      this.feeConfiguration,
+      this.limitsConfiguration,
+    ]);
     const currentRate = Big(rate);
-    const minKeeperFee = Big(limits[0]);
-    const protocolFee = Big(fees[0]);
     const divider = Big(PRECISION);
     let denominatorMinuend = divider.times(divider);
-    let numerator = minKeeperFee.times(denominatorMinuend);
-    let denominatorSubtrahend = protocolFee.times(currentRate.plus(1));
+    let numerator = Big(minKeeperFee).times(denominatorMinuend);
+    let denominatorSubtrahend = Big(protocolFee).times(currentRate.plus(1));
     if (currentRate.lt(divider)) {
       numerator = numerator.times(divider);
       denominatorMinuend = denominatorMinuend.times(rate);

@@ -2,7 +2,7 @@ import * as Pyth from '@pythnetwork/pyth-evm-js';
 import { OptionContracts } from '../contracts';
 import { applyDecimals } from '../utils/decimals.utils';
 
-export interface OptionsPriceFeedParams {
+export interface OptionsPriceFeedCtorParams {
   url: string;
   contracts?: OptionContracts;
 }
@@ -11,7 +11,7 @@ export class OptionsPriceFeed {
   pyth: Pyth.EvmPriceServiceConnection;
   contracts?: OptionContracts;
 
-  constructor(params: OptionsPriceFeedParams) {
+  constructor(params: OptionsPriceFeedCtorParams) {
     this.pyth = new Pyth.EvmPriceServiceConnection(params.url);
     this.contracts = params.contracts;
   }
