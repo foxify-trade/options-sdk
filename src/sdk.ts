@@ -3,6 +3,8 @@ import { OptionContracts, OptionsContractsCtorParams } from './contracts/contrac
 import { OptionsPriceFeed, OptionsPriceFeedCtorParams } from './price-feed';
 import * as decimalsUtils from './utils/decimals.utils';
 import { PartialObject } from './utils/type.utils';
+import { EvmPriceServiceConnection } from '@pythnetwork/pyth-evm-js';
+
 
 const DefaultApiParams: OptionsApiCtorParams = {
   url: 'https://api-options.prd.foxify.trade',
@@ -10,6 +12,7 @@ const DefaultApiParams: OptionsApiCtorParams = {
 
 const DefaultContractsParams: Omit<OptionsContractsCtorParams, 'privateKey'> = {
   rpc: 'https://arbitrum-one.publicnode.com',
+  pythUrl: 'https://xc-mainnet.pyth.network',
   address: {
     core: '0xec301D5a4ee80DF21E243E5490d29d44B83c27fC',
     stable: '0xaf88d065e77c8cc2239327c5edb3a432268e5831',
@@ -18,7 +21,7 @@ const DefaultContractsParams: Omit<OptionsContractsCtorParams, 'privateKey'> = {
   gasRiskFactor: {
     price: 10n,
     limit: 10n,
-  }
+  },
 } as const;
 
 const DefaultPriceFeedParams: OptionsPriceFeedCtorParams = {

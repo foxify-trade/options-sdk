@@ -1,5 +1,6 @@
 import assert from 'assert';
 import Web3 from 'web3';
+import * as Pyth from '@pythnetwork/pyth-evm-js';
 import { Core } from './Core';
 import { CoreConfiguration } from './CoreConfiguration';
 import { Erc20 } from './Erc20';
@@ -82,12 +83,14 @@ export interface OptionsContractsCtorParams {
    * If provided the backend will be notified about most actions, so it will appear on the front-end near instantly
    */
   rawApi?: IRawApi;
+  pythUrl: string;
 }
 
 export class OptionContracts {
   protected web3: Web3;
   protected logger: ILogger;
   protected rawApi?: IRawApi;
+  protected pyth: Pyth.EvmPriceServiceConnection;
 
   sender: string;
   gasStation: GasStation;
@@ -107,11 +110,13 @@ export class OptionContracts {
 
     const account = this.web3.eth.accounts.wallet.add(params.privateKey);
     this.sender = account.address;
+    console.log("🚀 ~ file: contracts.module.ts:113 ~ OptionContracts ~ constructor ~ account.address:", account.address)
 
     const contractOptions = { from: this.sender };
     this.core = new Core.Contract(this.web3, params.address.core, contractOptions);
     this.stable = new Erc20.Contract(this.web3, params.address.stable, contractOptions);
     this.coreConfiguration = new CoreConfiguration.Contract(this.web3, params.address.coreConfiguration, contractOptions);
+    this.pyth = new Pyth.EvmPriceServiceConnection(params.pythUrl);
   }
 
   #stableDecimals?: Promise<number>;
@@ -214,15 +219,25 @@ export class OptionContracts {
 
   async acceptOrders(oParams: { orderId: OrderId, amount: number }[]) {
     const decimals = await this.stableDecimals;
-    const orders = oParams.map((item) => {
+    const totalAmount = oParams.reduce((sum, order) => {
+      const actualAmount = this.#parseFloat(order.amount, decimals);
+      return sum.add(actualAmount);
+    }, Big(0)).toString();
+    await this.#approve(totalAmount);
+    const priceIds = await Promise.all(oParams.map(async ({ orderId }) => {
+      const order = await this.core.methods.orders(orderId).call();
+      return this.getOraclePythId(order.data.oracle);
+    }));
+    const updateData = await this.pyth.getPriceFeedsUpdateData(priceIds);
+    const params = oParams.map((item) => {
       return {
         orderId: item.orderId,
         amount: this.#parseFloat(item.amount, decimals),
+        updateData: updateData,
       }
     });
-    const totalAmount = oParams.reduce((sum, order) => sum.add(order.amount), Big(0)).toString();
-    await this.#approve(totalAmount);
-    const method = this.core.methods.accept(this.sender, orders);
+    // @ts-ignore bc updateData type is broken
+    const method = this.core.methods.accept(this.sender, params);
     const tx = await this.gasStation.estimateAndSend(method);
     const txHash = tx.transactionHash;
     this.#notify((api) => api.positions.positionControllerCreatePositionByHash({ txHash }));

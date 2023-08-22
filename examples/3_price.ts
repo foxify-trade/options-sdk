@@ -33,7 +33,8 @@ async function main() {
 
   console.log(`Oracle pyth id for ${oracle.name} (address=${oracle.address})`)
   const latest = await sdk.priceFeed.getLatestPrice(oracle.address);
-  console.log('Latest Price Feeds', latest);
+  await sdk.api.raw.orders.orderControllerGetOrders().
+    console.log('Latest Price Feeds', latest);
   sdk.priceFeed.subscribePriceUpdates(oracle.address, (price) => {
     console.log(`[${new Date().toISOString()}] New price feed received`, price);
   })

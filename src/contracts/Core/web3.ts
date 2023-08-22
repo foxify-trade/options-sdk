@@ -154,11 +154,19 @@ export declare namespace ICore {
     PositionStructOutputStruct;
 
   export type AcceptStruct =
-    | [number | string | BN, number | string | BN]
-    | { orderId: number | string | BN; amount: number | string | BN };
+    | [number | string | BN, number | string | BN, string | number[][]]
+    | {
+      orderId: number | string | BN;
+      amount: number | string | BN;
+      updateData: string | number[][];
+    };
 
-  export type AcceptStructOutputArray = [string, string];
-  export type AcceptStructOutputStruct = { orderId: string; amount: string };
+  export type AcceptStructOutputArray = [string, string, string[]];
+  export type AcceptStructOutputStruct = {
+    orderId: string;
+    amount: string;
+    updateData: string[];
+  };
   export type AcceptStructOutput = AcceptStructOutputArray &
     AcceptStructOutputStruct;
 
@@ -249,13 +257,15 @@ export type AutoResolved = ContractEventLog<{
   winner: string;
   protocolStableFee: string;
   autoResolveFee: string;
+  referralID: string;
   affiliation: ICoreUtilities.AffiliationUserDataStructOutput;
   0: string;
   1: string;
   2: string;
   3: string;
   4: string;
-  5: ICoreUtilities.AffiliationUserDataStructOutput;
+  5: string;
+  6: ICoreUtilities.AffiliationUserDataStructOutput;
 }>;
 export type FeeClaimed = ContractEventLog<{
   amount: string;
@@ -310,8 +320,6 @@ export interface Core extends BaseContract {
   ): Core;
   clone(): Core;
   methods: {
-    CANCELATION_PERIOD(): NonPayableTransactionObject<string>;
-
     DIVIDER(): NonPayableTransactionObject<string>;
 
     accept(
@@ -321,7 +329,7 @@ export interface Core extends BaseContract {
 
     autoResolve(
       positionId: number | string | BN,
-      roundId: number | string | BN
+      updateData: string | number[][]
     ): NonPayableTransactionObject<boolean>;
 
     availableFeeAmount(): NonPayableTransactionObject<string>;
