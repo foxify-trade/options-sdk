@@ -1,14 +1,16 @@
 import assert from 'assert';
 import Web3 from 'web3';
+import * as Pyth from '@pythnetwork/pyth-evm-js';
 import { Core } from './Core';
 import { CoreConfiguration } from './CoreConfiguration';
 import { Erc20 } from './Erc20';
 import { ILogger } from '../logger';
 import { GasStation } from './gas-station';
 import { obtainLog } from './log.utils';
-import { Src, applyDecimals } from '../utils/decimals.utils';
+import { Src, applyDecimals, removeDecimals } from '../utils/decimals.utils';
 import Big from 'big.js';
 import type { IRawApi } from '../api';
+import { PythCryptoOracle } from './PythCryptoOracle';
 
 type OrderId = number;
 enum Direction {
@@ -27,6 +29,24 @@ const DurationMap: Record<AllowedDurationValue, number> = {
   '4h': 4 * 60 * 60,
   '8h': 8 * 60 * 60,
   '24h': 24 * 60 * 60
+}
+
+const PRECISION = Big(1e18);
+
+interface ILimitsConfiguration {
+  minKeeperFee: string;
+  minOrderRate: string;
+  maxOrderRate: string;
+  minDuration: string;
+  maxDuration: string;
+  maxAutoResolveDuration: string;
+}
+
+interface IFeeConfiguration {
+  feeRecipient: string;
+  autoResolveFee: string;
+  protocolFee: string;
+  flashloanFee: string;
 }
 
 interface ICreateOrder {
@@ -53,6 +73,7 @@ export interface OptionsContractsCtorParams {
   address: {
     core: string;
     stable: string;
+    coreConfiguration: string;
   };
   gasRiskFactor: {
     price: BigInt,
@@ -62,17 +83,20 @@ export interface OptionsContractsCtorParams {
    * If provided the backend will be notified about most actions, so it will appear on the front-end near instantly
    */
   rawApi?: IRawApi;
+  pythUrl: string;
 }
 
 export class OptionContracts {
   protected web3: Web3;
   protected logger: ILogger;
   protected rawApi?: IRawApi;
+  protected pyth: Pyth.EvmPriceServiceConnection;
 
   sender: string;
   gasStation: GasStation;
 
   core: Core.Contract;
+  coreConfiguration: CoreConfiguration.Contract;
   stable: Erc20.Contract;
 
   Direction = Direction;
@@ -86,10 +110,13 @@ export class OptionContracts {
 
     const account = this.web3.eth.accounts.wallet.add(params.privateKey);
     this.sender = account.address;
+    console.log("🚀 ~ file: contracts.module.ts:113 ~ OptionContracts ~ constructor ~ account.address:", account.address)
 
     const contractOptions = { from: this.sender };
     this.core = new Core.Contract(this.web3, params.address.core, contractOptions);
     this.stable = new Erc20.Contract(this.web3, params.address.stable, contractOptions);
+    this.coreConfiguration = new CoreConfiguration.Contract(this.web3, params.address.coreConfiguration, contractOptions);
+    this.pyth = new Pyth.EvmPriceServiceConnection(params.pythUrl);
   }
 
   #stableDecimals?: Promise<number>;
@@ -106,14 +133,40 @@ export class OptionContracts {
     return this.#stableDecimals;
   }
 
+  #feeConfiguration?: Promise<IFeeConfiguration>;
+  get feeConfiguration() {
+    if (this.#feeConfiguration) {
+      return this.#feeConfiguration;
+    }
+    this.#feeConfiguration = this.coreConfiguration.methods.feeConfiguration().call()
+      .catch((e) => {
+        this.#feeConfiguration = undefined;
+        throw e;
+      })
+    return this.#feeConfiguration;
+  }
+
+  #limitsConfiguration?: Promise<ILimitsConfiguration>;
+  get limitsConfiguration() {
+    if (this.#limitsConfiguration) {
+      return this.#limitsConfiguration;
+    }
+    this.#limitsConfiguration = this.coreConfiguration.methods.limitsConfiguration().call()
+      .catch((e) => {
+        this.#limitsConfiguration = undefined;
+        throw e;
+      })
+    return this.#limitsConfiguration;
+  }
+
   async createOrder(
     data: ICreateOrder
   ) {
     const percent = this.#parsePercent(data.percent);
     const duration = this.#parseDuration(data.duration);
-    assert(data.rate > 0 && data.rate <= 100, 'Invalid rate: should be >= 0 and <= 100');
-    const rate = this.#parseFloat(data.rate, 16);
+    const rate = await this.#parseRate(data.rate);
     const amount = await this.#parseStableAmount(data.amount);
+    await this.#validateOrderAmount(Big(amount), Big(rate));
     await this.#approve(amount);
     const description: Core.Web3.ICore.OrderDescriptionStruct = {
       oracle: data.oracle,
@@ -123,7 +176,8 @@ export class OptionContracts {
       duration,
       percent,
     };
-    const method = this.core.methods.createOrder(this.sender, description, data.amount);
+    this.logger.debug('Order data', { description, amount })
+    const method = this.core.methods.createOrder(this.sender, description, amount);
     const tx = await this.gasStation.estimateAndSend(method);
     this.logger.debug('Tx sent', { tx: tx.transactionHash });
     const event = tx.events!.OrderCreated as Core.Web3.OrderCreated;
@@ -153,8 +207,10 @@ export class OptionContracts {
     this.logger.log('Order wihtdrawed', { txHash });
   }
 
-  async closeOrder(...params: Parameters<Core.Contract['methods']['closeOrder']>) {
-    const method = this.core.methods.closeOrder(...params);
+  async closeOrder(orderId: OrderId) {
+    const order = await this.core.methods.orders(orderId).call();
+    assert(order.closed === false, 'Order is already cancelled');
+    const method = this.core.methods.closeOrder(orderId);
     const tx = await this.gasStation.estimateAndSend(method);
     const txHash = tx.transactionHash;
     this.#notify((api) => api.orders.orderControllerCloseOrder({ txHash }));
@@ -163,25 +219,46 @@ export class OptionContracts {
 
   async acceptOrders(oParams: { orderId: OrderId, amount: number }[]) {
     const decimals = await this.stableDecimals;
-    const orders = oParams.map((item) => {
+    const totalAmount = oParams.reduce((sum, order) => {
+      const actualAmount = this.#parseFloat(order.amount, decimals);
+      return sum.add(actualAmount);
+    }, Big(0)).toString();
+    await this.#approve(totalAmount);
+    const priceIds = await Promise.all(oParams.map(async ({ orderId }) => {
+      const order = await this.core.methods.orders(orderId).call();
+      return this.getOraclePythId(order.data.oracle);
+    }));
+    const updateData = await this.pyth.getPriceFeedsUpdateData(priceIds);
+    const params = oParams.map((item) => {
       return {
         orderId: item.orderId,
         amount: this.#parseFloat(item.amount, decimals),
+        updateData: updateData,
       }
     });
-    const totalAmount = oParams.reduce((sum, order) => sum.add(order.amount), Big(0)).toString();
-    await this.#approve(totalAmount);
-    const method = this.core.methods.accept(this.sender, orders);
+    // @ts-ignore bc updateData type is broken
+    const method = this.core.methods.accept(this.sender, params);
     const tx = await this.gasStation.estimateAndSend(method);
     const txHash = tx.transactionHash;
     this.#notify((api) => api.positions.positionControllerCreatePositionByHash({ txHash }));
     this.logger.log('Order accepted', { txHash });
   }
 
+  async getOraclePythId(oracleAddress: string) {
+    const contract = new PythCryptoOracle.Contract(this.web3, oracleAddress);
+    const pythId = await contract.methods.priceId().call();
+    return pythId
+  }
+
+  async approve(amount: number) {
+    const value = await this.#parseStableAmount(amount);
+    await this.#approve(value);
+  }
+
   async #approve(amount: string | number) {
     const allowance = await this.stable.methods.allowance(this.sender, this.core.options.address).call().then((v) => Big(v));
     if (allowance.lt(amount)) {
-      this.logger.debug('Too low allowance, reapproving..', { current: allowance, needed: amount });
+      this.logger.debug('Too low allowance, reapproving..', { current: allowance.toString(), needed: amount });
       const method = this.stable.methods.approve(this.core.options.address, amount.toString());
       const tx = await this.gasStation.estimateAndSend(method);
       this.logger.debug('Approved', { tx: tx.transactionHash });
@@ -211,11 +288,29 @@ export class OptionContracts {
     return DurationMap[value];
   }
 
+  async #parseRate(oValue: number) {
+    const RateDecimals = 18;
+    const value = applyDecimals(Big(oValue).sub(1), RateDecimals);
+    const { minOrderRate, maxOrderRate } = await this.limitsConfiguration;
+    const formatedMin = removeDecimals(minOrderRate, RateDecimals);
+    const formatedMax = removeDecimals(maxOrderRate, RateDecimals);
+    assert(value.gte(minOrderRate) && value.lte(maxOrderRate), `Invalid rate: rate (${oValue}) should be >= ${formatedMin} and <= ${formatedMax}`);
+    return value.toString();
+  }
+
+  async #validateOrderAmount(amount: Big, rate: Big) {
+    const minAmount = await this.getMinOrderAmount(rate);
+    const stableDecimals = await this.stableDecimals;
+    const fAmount = removeDecimals(amount, stableDecimals);
+    const fMinAmount = removeDecimals(minAmount, stableDecimals);
+    assert(amount.gte(minAmount), `Invalid order amount: amount (${fAmount}) should be greater than minAmount (${fMinAmount}) (minAmount depends on rate)`);
+  }
+
   #parseFloat(value: number, decimals: number) {
     const result = applyDecimals(value, decimals);
     const fract = result.round(Big.roundDown).minus(result);
     assert(fract.lte(0), `Invlalid float, too many numbers in fractional part (value=${value} maxFractionalNumbersCount=${decimals}`)
-    return applyDecimals(value, decimals).toString()
+    return result.toString()
   }
 
   async #parseStableAmount(value: number) {
@@ -232,5 +327,23 @@ export class OptionContracts {
           this.logger.warn('Failed to notify, wait for backend to index your action', error);
         })
     }
+  }
+
+  async getMinOrderAmount(rate: Big | number | string) {
+    const [{ protocolFee }, { minKeeperFee }] = await Promise.all([
+      this.feeConfiguration,
+      this.limitsConfiguration,
+    ]);
+    const currentRate = Big(rate);
+    const divider = Big(PRECISION);
+    let denominatorMinuend = divider.times(divider);
+    let numerator = Big(minKeeperFee).times(denominatorMinuend);
+    let denominatorSubtrahend = Big(protocolFee).times(currentRate.plus(1));
+    if (currentRate.lt(divider)) {
+      numerator = numerator.times(divider);
+      denominatorMinuend = denominatorMinuend.times(rate);
+      denominatorSubtrahend = denominatorSubtrahend.times(divider);
+    }
+    return numerator.div(denominatorMinuend.minus(denominatorSubtrahend)).plus(1);
   }
 }

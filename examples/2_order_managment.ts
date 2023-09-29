@@ -21,6 +21,9 @@ const sdk = new OptionsSdk({
       price: 10n,
       limit: 10n,
     }
+  },
+  priceFeed: {
+    url: 'https://xc-mainnet.pyth.network',
   }
 })
 

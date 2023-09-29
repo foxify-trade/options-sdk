@@ -27,15 +27,17 @@ const sdk = new OptionsSdk({
   }
 })
 
-const minStableAmount = 1;
 async function main() {
 
-  const [order] = await sdk.api.getOrders();
+  // get orders that u have created
+  const myOrders = await sdk.api.getOrders({
+    account: sdk.contracts.sender,
+    orderType: 'my_order',
+    skip: 0,
+    limit: 10,
+  });
 
-  const result = await sdk.contracts.acceptOrders([{
-    orderId: order.orderId,
-    amount: minStableAmount + 1,
-  }]);
+
 }
 
 main();

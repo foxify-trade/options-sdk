@@ -2,10 +2,10 @@
 /* tslint:disable */
 /* eslint-disable */
 
-import type BN from 'bn.js';
-import type { ContractOptions } from 'web3-eth-contract';
-import type { EventLog } from 'web3-core';
-import type { EventEmitter } from 'events';
+import type BN from "bn.js";
+import type { ContractOptions } from "web3-eth-contract";
+import type { EventLog } from "web3-core";
+import type { EventEmitter } from "events";
 import type {
   Callback,
   PayableTransactionObject,
@@ -13,7 +13,7 @@ import type {
   BlockType,
   ContractEventLog,
   BaseContract,
-} from '../types';
+} from "../types";
 
 export interface EventOptions {
   filter?: object;
@@ -21,127 +21,13 @@ export interface EventOptions {
   topics?: string[];
 }
 
-export declare namespace ICoreConfiguration {
-  export type ImmutableConfigurationStruct =
-    | [string, string, string, string]
-    | {
-        blacklist: string;
-        affiliation: string;
-        positionTokenAccepter: string;
-        stable: string;
-      };
-
-  export type ImmutableConfigurationStructOutputArray = [
-    string,
-    string,
-    string,
-    string
-  ];
-  export type ImmutableConfigurationStructOutputStruct = {
-    blacklist: string;
-    affiliation: string;
-    positionTokenAccepter: string;
-    stable: string;
-  };
-  export type ImmutableConfigurationStructOutput =
-    ImmutableConfigurationStructOutputArray &
-      ImmutableConfigurationStructOutputStruct;
-
-  export type NFTDiscountLevelStruct =
-    | [number | string | BN, number | string | BN, number | string | BN]
-    | {
-        bronze: number | string | BN;
-        silver: number | string | BN;
-        gold: number | string | BN;
-      };
-
-  export type NFTDiscountLevelStructOutputArray = [string, string, string];
-  export type NFTDiscountLevelStructOutputStruct = {
-    bronze: string;
-    silver: string;
-    gold: string;
-  };
-  export type NFTDiscountLevelStructOutput = NFTDiscountLevelStructOutputArray &
-    NFTDiscountLevelStructOutputStruct;
-
-  export type FeeConfigurationStruct =
-    | [string, number | string | BN, number | string | BN, number | string | BN]
-    | {
-        feeRecipient: string;
-        autoResolveFee: number | string | BN;
-        protocolFee: number | string | BN;
-        flashloanFee: number | string | BN;
-      };
-
-  export type FeeConfigurationStructOutputArray = [
-    string,
-    string,
-    string,
-    string
-  ];
-  export type FeeConfigurationStructOutputStruct = {
-    feeRecipient: string;
-    autoResolveFee: string;
-    protocolFee: string;
-    flashloanFee: string;
-  };
-  export type FeeConfigurationStructOutput = FeeConfigurationStructOutputArray &
-    FeeConfigurationStructOutputStruct;
-
-  export type LimitsConfigurationStruct =
-    | [
-        number | string | BN,
-        number | string | BN,
-        number | string | BN,
-        number | string | BN,
-        number | string | BN
-      ]
-    | {
-        minStableAmount: number | string | BN;
-        minOrderRate: number | string | BN;
-        maxOrderRate: number | string | BN;
-        minDuration: number | string | BN;
-        maxDuration: number | string | BN;
-      };
-
-  export type LimitsConfigurationStructOutputArray = [
-    string,
-    string,
-    string,
-    string,
-    string
-  ];
-  export type LimitsConfigurationStructOutputStruct = {
-    minStableAmount: string;
-    minOrderRate: string;
-    maxOrderRate: string;
-    minDuration: string;
-    maxDuration: string;
-  };
-  export type LimitsConfigurationStructOutput =
-    LimitsConfigurationStructOutputArray &
-      LimitsConfigurationStructOutputStruct;
-
-  export type SwapperStruct =
-    | [string, string | number[]]
-    | { swapperConnector: string; path: string | number[] };
-
-  export type SwapperStructOutputArray = [string, string];
-  export type SwapperStructOutputStruct = {
-    swapperConnector: string;
-    path: string;
-  };
-  export type SwapperStructOutput = SwapperStructOutputArray &
-    SwapperStructOutputStruct;
-}
-
 export type DiscountUpdated = ContractEventLog<{
-  discount_: ICoreConfiguration.NFTDiscountLevelStructOutput;
-  0: ICoreConfiguration.NFTDiscountLevelStructOutput;
+  discount_: [string, string, string];
+  0: [string, string, string];
 }>;
 export type FeeConfigurationUpdated = ContractEventLog<{
-  config: ICoreConfiguration.FeeConfigurationStructOutput;
-  0: ICoreConfiguration.FeeConfigurationStructOutput;
+  config: [string, string, string, string];
+  0: [string, string, string, string];
 }>;
 export type KeepersAdded = ContractEventLog<{
   keepers: string[];
@@ -152,8 +38,8 @@ export type KeepersRemoved = ContractEventLog<{
   0: string[];
 }>;
 export type LimitsConfigurationUpdated = ContractEventLog<{
-  config: ICoreConfiguration.LimitsConfigurationStructOutput;
-  0: ICoreConfiguration.LimitsConfigurationStructOutput;
+  config: [string, string, string, string, string, string];
+  0: [string, string, string, string, string, string];
 }>;
 export type OraclesAdded = ContractEventLog<{
   oracles: string[];
@@ -174,17 +60,17 @@ export type OwnershipTransferred = ContractEventLog<{
   1: string;
 }>;
 export type SwapperUpdated = ContractEventLog<{
-  swapper: ICoreConfiguration.SwapperStructOutput;
-  0: ICoreConfiguration.SwapperStructOutput;
+  swapper: [string, string];
+  0: [string, string];
 }>;
 
-export interface Oracle extends BaseContract {
+export interface CoreConfiguration extends BaseContract {
   constructor(
     jsonInterface: any[],
     address?: string,
     options?: ContractOptions
-  ): Oracle;
-  clone(): Oracle;
+  ): CoreConfiguration;
+  clone(): CoreConfiguration;
   methods: {
     DIVIDER(): NonPayableTransactionObject<string>;
 
@@ -196,31 +82,40 @@ export interface Oracle extends BaseContract {
 
     addOracles(oracles_: string[]): NonPayableTransactionObject<boolean>;
 
-    discount(): NonPayableTransactionObject<
-      [string, string, string] & {
-        bronze: string;
-        silver: string;
-        gold: string;
-      }
-    >;
+    discount(): NonPayableTransactionObject<{
+      bronze: string;
+      silver: string;
+      gold: string;
+      0: string;
+      1: string;
+      2: string;
+    }>;
 
-    feeConfiguration(): NonPayableTransactionObject<
-      [string, string, string, string] & {
-        feeRecipient: string;
-        autoResolveFee: string;
-        protocolFee: string;
-        flashloanFee: string;
-      }
-    >;
+    feeConfiguration(): NonPayableTransactionObject<{
+      feeRecipient: string;
+      autoResolveFee: string;
+      protocolFee: string;
+      flashloanFee: string;
+      0: string;
+      1: string;
+      2: string;
+      3: string;
+    }>;
 
-    immutableConfiguration(): NonPayableTransactionObject<
-      [string, string, string, string] & {
-        blacklist: string;
-        affiliation: string;
-        positionTokenAccepter: string;
-        stable: string;
-      }
-    >;
+    immutableConfiguration(): NonPayableTransactionObject<{
+      blacklist: string;
+      referral: string;
+      affiliation: string;
+      positionTokenAccepter: string;
+      stable: string;
+      utils: string;
+      0: string;
+      1: string;
+      2: string;
+      3: string;
+      4: string;
+      5: string;
+    }>;
 
     keepers(index: number | string | BN): NonPayableTransactionObject<string>;
 
@@ -228,15 +123,20 @@ export interface Oracle extends BaseContract {
 
     keepersCount(): NonPayableTransactionObject<string>;
 
-    limitsConfiguration(): NonPayableTransactionObject<
-      [string, string, string, string, string] & {
-        minStableAmount: string;
-        minOrderRate: string;
-        maxOrderRate: string;
-        minDuration: string;
-        maxDuration: string;
-      }
-    >;
+    limitsConfiguration(): NonPayableTransactionObject<{
+      minKeeperFee: string;
+      minOrderRate: string;
+      maxOrderRate: string;
+      minDuration: string;
+      maxDuration: string;
+      maxAutoResolveDuration: string;
+      0: string;
+      1: string;
+      2: string;
+      3: string;
+      4: string;
+      5: string;
+    }>;
 
     oracles(index: number | string | BN): NonPayableTransactionObject<string>;
 
@@ -266,26 +166,45 @@ export interface Oracle extends BaseContract {
 
     renounceOwnership(): NonPayableTransactionObject<void>;
 
-    swapper(): NonPayableTransactionObject<
-      [string, string] & { connector: string; path: string }
-    >;
+    swapper(): NonPayableTransactionObject<{
+      connector: string;
+      path: string;
+      0: string;
+      1: string;
+    }>;
 
     transferOwnership(newOwner: string): NonPayableTransactionObject<void>;
 
     updateDiscount(
-      discount_: ICoreConfiguration.NFTDiscountLevelStruct
+      discount_: [
+        number | string | BN,
+        number | string | BN,
+        number | string | BN
+      ]
     ): NonPayableTransactionObject<boolean>;
 
     updateFeeConfiguration(
-      config: ICoreConfiguration.FeeConfigurationStruct
+      config: [
+        string,
+        number | string | BN,
+        number | string | BN,
+        number | string | BN
+      ]
     ): NonPayableTransactionObject<boolean>;
 
     updateLimitsConfiguration(
-      config: ICoreConfiguration.LimitsConfigurationStruct
+      config: [
+        number | string | BN,
+        number | string | BN,
+        number | string | BN,
+        number | string | BN,
+        number | string | BN,
+        number | string | BN
+      ]
     ): NonPayableTransactionObject<boolean>;
 
     updateSwapper(
-      swapper_: ICoreConfiguration.SwapperStruct
+      swapper_: [string, string | number[]]
     ): NonPayableTransactionObject<boolean>;
   };
   events: {
@@ -358,81 +277,81 @@ export interface Oracle extends BaseContract {
     allEvents(options?: EventOptions, cb?: Callback<EventLog>): EventEmitter;
   };
 
-  once(event: 'DiscountUpdated', cb: Callback<DiscountUpdated>): void;
+  once(event: "DiscountUpdated", cb: Callback<DiscountUpdated>): void;
   once(
-    event: 'DiscountUpdated',
+    event: "DiscountUpdated",
     options: EventOptions,
     cb: Callback<DiscountUpdated>
   ): void;
 
   once(
-    event: 'FeeConfigurationUpdated',
+    event: "FeeConfigurationUpdated",
     cb: Callback<FeeConfigurationUpdated>
   ): void;
   once(
-    event: 'FeeConfigurationUpdated',
+    event: "FeeConfigurationUpdated",
     options: EventOptions,
     cb: Callback<FeeConfigurationUpdated>
   ): void;
 
-  once(event: 'KeepersAdded', cb: Callback<KeepersAdded>): void;
+  once(event: "KeepersAdded", cb: Callback<KeepersAdded>): void;
   once(
-    event: 'KeepersAdded',
+    event: "KeepersAdded",
     options: EventOptions,
     cb: Callback<KeepersAdded>
   ): void;
 
-  once(event: 'KeepersRemoved', cb: Callback<KeepersRemoved>): void;
+  once(event: "KeepersRemoved", cb: Callback<KeepersRemoved>): void;
   once(
-    event: 'KeepersRemoved',
+    event: "KeepersRemoved",
     options: EventOptions,
     cb: Callback<KeepersRemoved>
   ): void;
 
   once(
-    event: 'LimitsConfigurationUpdated',
+    event: "LimitsConfigurationUpdated",
     cb: Callback<LimitsConfigurationUpdated>
   ): void;
   once(
-    event: 'LimitsConfigurationUpdated',
+    event: "LimitsConfigurationUpdated",
     options: EventOptions,
     cb: Callback<LimitsConfigurationUpdated>
   ): void;
 
-  once(event: 'OraclesAdded', cb: Callback<OraclesAdded>): void;
+  once(event: "OraclesAdded", cb: Callback<OraclesAdded>): void;
   once(
-    event: 'OraclesAdded',
+    event: "OraclesAdded",
     options: EventOptions,
     cb: Callback<OraclesAdded>
   ): void;
 
-  once(event: 'OraclesRemoved', cb: Callback<OraclesRemoved>): void;
+  once(event: "OraclesRemoved", cb: Callback<OraclesRemoved>): void;
   once(
-    event: 'OraclesRemoved',
+    event: "OraclesRemoved",
     options: EventOptions,
     cb: Callback<OraclesRemoved>
   ): void;
 
   once(
-    event: 'OraclesWhitelistRemoved',
+    event: "OraclesWhitelistRemoved",
     cb: Callback<OraclesWhitelistRemoved>
   ): void;
   once(
-    event: 'OraclesWhitelistRemoved',
+    event: "OraclesWhitelistRemoved",
     options: EventOptions,
     cb: Callback<OraclesWhitelistRemoved>
   ): void;
 
-  once(event: 'OwnershipTransferred', cb: Callback<OwnershipTransferred>): void;
+  once(event: "OwnershipTransferred", cb: Callback<OwnershipTransferred>): void;
   once(
-    event: 'OwnershipTransferred',
+    event: "OwnershipTransferred",
     options: EventOptions,
     cb: Callback<OwnershipTransferred>
   ): void;
 
-  once(event: 'SwapperUpdated', cb: Callback<SwapperUpdated>): void;
+  once(event: "SwapperUpdated", cb: Callback<SwapperUpdated>): void;
   once(
-    event: 'SwapperUpdated',
+    event: "SwapperUpdated",
     options: EventOptions,
     cb: Callback<SwapperUpdated>
   ): void;

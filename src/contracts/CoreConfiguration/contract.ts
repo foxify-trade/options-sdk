@@ -2,7 +2,7 @@ import { ABI } from './abi';
 import { Web3Contract } from '../factory';
 import * as Base from './web3';
 
-export class Contract extends Web3Contract<Base.Oracle>({
+export class Contract extends Web3Contract<Base.CoreConfiguration>({
   abi: ABI,
 }) { }
 

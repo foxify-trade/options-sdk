@@ -27,15 +27,18 @@ const sdk = new OptionsSdk({
   }
 })
 
-const minStableAmount = 1;
 async function main() {
 
-  const [order] = await sdk.api.getOrders();
+  const [oracle] = await sdk.api.getOracles();
 
-  const result = await sdk.contracts.acceptOrders([{
-    orderId: order.orderId,
-    amount: minStableAmount + 1,
-  }]);
+  console.log(`Oracle pyth id for ${oracle.name} (address=${oracle.address})`)
+  const latest = await sdk.priceFeed.getLatestPrice(oracle.address);
+  await sdk.api.raw.orders.orderControllerGetOrders().
+    console.log('Latest Price Feeds', latest);
+  sdk.priceFeed.subscribePriceUpdates(oracle.address, (price) => {
+    console.log(`[${new Date().toISOString()}] New price feed received`, price);
+  })
+
 }
 
 main();

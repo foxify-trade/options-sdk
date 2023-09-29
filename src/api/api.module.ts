@@ -16,15 +16,16 @@ export interface IRawApi {
 }
 
 interface IGetOrders {
-  oracleIds?: Array<number>
+  oracleIds?: Array<number>;
   sortingBy?: 'rate' | 'reserved' | 'available' | 'duration' | 'percent' | 'amount';
-  sortingDestination?: 'ASC' | 'DESC', closed?: boolean;
+  sortingDestination?: 'ASC' | 'DESC';
+  closed?: boolean;
   account?: string;
   orderType?: 'my_order' | 'all_order';
   duration?: string;
   percent?: string;
   skip?: number;
-  limit?: number;
+  limit?: number
 }
 
 export class OptionsApi {
@@ -53,16 +54,16 @@ export class OptionsApi {
 
   async getOrders(oParams?: IGetOrders) {
     const paramsObj: IGetOrders = {
-      oracleIds: undefined,
-      sortingBy: undefined,
-      sortingDestination: undefined,
-      account: undefined,
-      orderType: undefined,
-      duration: undefined,
-      percent: undefined,
-      skip: undefined,
-      limit: undefined,
-      ...oParams,
+      oracleIds: oParams?.oracleIds,
+      sortingBy: oParams?.sortingBy,
+      sortingDestination: oParams?.sortingDestination,
+      closed: oParams?.closed,
+      account: oParams?.account,
+      orderType: oParams?.orderType,
+      duration: oParams?.duration,
+      percent: oParams?.percent,
+      skip: oParams?.skip,
+      limit: oParams?.limit,
     };
     const params = Object.values(paramsObj) as Parameters<OrdersApi['orderControllerGetOrders']>;
     const response = await this.raw.orders.orderControllerGetOrders(...params);
