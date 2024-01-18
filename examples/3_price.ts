@@ -23,7 +23,7 @@ const sdk = new OptionsSdk({
     }
   },
   priceFeed: {
-    url: 'https://xc-mainnet.pyth.network',
+    url: 'https://hermes.pyth.network',
   }
 })
 
