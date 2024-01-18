@@ -12,7 +12,7 @@ const DefaultApiParams: OptionsApiCtorParams = {
 
 const DefaultContractsParams: Omit<OptionsContractsCtorParams, 'privateKey'> = {
   rpc: 'https://arbitrum-one.publicnode.com',
-  pythUrl: 'https://xc-mainnet.pyth.network',
+  pythUrl: 'https://hermes.pyth.network',
   address: {
     core: '0xec301D5a4ee80DF21E243E5490d29d44B83c27fC',
     stable: '0xaf88d065e77c8cc2239327c5edb3a432268e5831',
@@ -25,7 +25,7 @@ const DefaultContractsParams: Omit<OptionsContractsCtorParams, 'privateKey'> = {
 } as const;
 
 const DefaultPriceFeedParams: OptionsPriceFeedCtorParams = {
-  url: 'https://xc-mainnet.pyth.network',
+  url: 'https://hermes.pyth.network',
 }
 
 export interface OptionsSdkParams {
